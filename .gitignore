@@ -1,0 +1,10 @@
+# VPS files
+server
+
+# Dependency directory
+node_modules
+
+.env
+
+# that was some tests on here:
+routes/announcement.js

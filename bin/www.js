@@ -6,8 +6,12 @@
 
 import debugLib from "debug";
 import http from "http";
+import https from "https";
+import fs from 'fs';
 
 import app from "../app.js";
+import path, { dirname } from 'path';
+import __dirname from '../dirname.js';
 
 const debug = debugLib("tt-saratov-bot:server");
 
@@ -22,7 +26,16 @@ app.set("port", port);
  * Create HTTP server.
  */
 
-const server = http.createServer(app);
+// const server = http.createServer(app);
+
+// Create HTTPS server.
+
+const options ={
+  key: fs.readFileSync(path.join(__dirname, 'bin/sslcert/privkey.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'bin/sslcert/fullchain.pem')),
+}
+const server = https.createServer(options, app);
+
 
 /**
  * Listen on provided port, on all network interfaces.

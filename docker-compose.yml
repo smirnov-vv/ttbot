@@ -1,0 +1,10 @@
+version: "3"
+
+services:
+  ttbot:
+    build: .
+    volumes:
+      - ".:/app"
+#    ports: # Проброс портов
+#      - "443:3000"
+    image: vvsmirnov/tt-saratov-bot
