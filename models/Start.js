@@ -1,7 +1,7 @@
 import Base from './Base.js';
 
 export default class Start extends Base {
-  async respond(update) {
+  static async respond(update) {
     const replyKeyborad = {
       resize_keyboard: true,
       one_time_keyboard: true,
@@ -21,6 +21,6 @@ export default class Start extends Base {
       reply_markup: replyKeyborad,
     };
 
-    await this.sendMsgToChat(msg);
+    await Base.sendMsgToChat(msg);
   }
 }

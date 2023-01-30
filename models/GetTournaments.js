@@ -1,30 +1,23 @@
-/* eslint no-console: ["error", { allow: ["warn", "error", "log"] }] */
-
 import axios from 'axios';
 import Base from './Base.js';
 
-const ENV = process.env.ENV;
+const ENV = process.env.environment;
 const DB = process.env.DB_API_URL;
 
-export default class GetTournaments extends Base {
-  async respond(update) {
-    let afterDate;
-    if (ENV === 'prod') {
-      afterDate = new Date();
-    } else {
-      afterDate = new Date('2016-10-18T11:24:00');
-    }
+const inlineKeyboard = {
+  inline_keyboard: [
+    [
+      {
+        text: 'Посмотреть список участников',
+        callback_data: 'cb_get_participants',
+      },
+    ],
+  ],
+};
 
-    const inlineKeyboard = {
-      inline_keyboard: [
-        [
-          {
-            text: 'Посмотреть список участников',
-            callback_data: 'cb_get_participants',
-          },
-        ],
-      ],
-    };
+export default class GetTournaments extends Base {
+  static async respond(update) {
+    const afterDate = ENV === 'prod' ? new Date() : new Date('2016-10-18T11:24:00');
 
     // Get list of future tournaments
     const xTours = await axios.get(`${DB}/x_Tours`);
@@ -32,32 +25,32 @@ export default class GetTournaments extends Base {
     console.log(xTours.data.x_Tours.columns);
     const allTours = xTours.data.x_Tours.records;
     const futureTours = allTours.filter((tour) => new Date(tour[3]) > afterDate)
-      .map((tour) => {
-        const tId = tour[0];
-        const tDateTime = tour[3];
-        const tSite = tour[4];
-        const tName = tour[6];
-        const tUrl = tour[10];
-        const qsOfAnnouncement = tour[10]?.split('?')[1];
-
-        // Check if provided URL has a query string
-        if (qsOfAnnouncement) {
-          // return `<a href="https://ttbot.smirnov.solutions:${PORT}/announcement?${qsOfAnnouncement}">${tId}. ${tDateTime} - ${tSite} - ${tName}</a>`;
-          return `<a href="${tUrl}">${tId}. ${tDateTime} - ${tSite} - ${tName}</a>`;
-        }
-        return `${tId}. ${tDateTime} - ${tSite} - ${tName}`;
-      });
+      .map(([tId, , , tDateTime, tSite, , tName, , , , tUrl]) => (tUrl
+        ? `<a href="${tUrl}">${tId}. ${tDateTime} - ${tSite} - ${tName}</a>`
+        // return `<a href="https://ttbot.smirnov.solutions:${PORT}/announcement?${qsOfAnnouncement}">${tId}. ${tDateTime} - ${tSite} - ${tName}</a>`;
+        : `${tId}. ${tDateTime} - ${tSite} - ${tName}`));
 
     if (futureTours.length === 0) {
-      const msg = {
-        chat_id: update.message.chat.id,
-        text: 'Объявлений о новых турнирах пока нет, попробуйте позже.',
-      };
-      await this.sendMsgToChat(msg);
+      const msg = { chat_id: update.message.chat.id, text: 'Объявлений о новых турнирах пока нет, попробуйте позже.' };
+      await Base.sendMsgToChat(msg);
       return;
     }
 
+    await futureTours.reduce(async (memo, tour) => {
+      await memo; // wait for the previous result
+      const msg = {
+        chat_id: update.message.chat.id,
+        text: tour,
+        reply_markup: inlineKeyboard,
+        parse_mode: 'HTML',
+      };
+      await Base.sendMsgToChat(msg);
+    }, undefined);
+
+    /*
     const sendResult = async (tours) => {
+      /* eslint-disable-next-line */
+    /*
       for (const tour of tours) {
         const msg = {
           chat_id: update.message.chat.id,
@@ -65,11 +58,13 @@ export default class GetTournaments extends Base {
           reply_markup: inlineKeyboard,
           parse_mode: 'HTML',
         };
-        await this.sendMsgToChat(msg);
+        /* eslint-disable-next-line */
+    /*
+        await Base.sendMsgToChat(msg);
       }
     };
 
-    sendResult(futureTours);
+    sendResult(futureTours); */
 
     /*
     futureTours.forEach(async (tour) => {
@@ -79,7 +74,7 @@ export default class GetTournaments extends Base {
         reply_markup: inlineKeyboard,
         parse_mode: 'HTML',
       };
-      await this.sendMsgToChat(msg);
+      await Base.sendMsgToChat(msg);
     }); */
   }
 }

@@ -1,5 +1,3 @@
-/* eslint no-console: ["error", { allow: ["warn", "error", "log"] }] */
-
 import express from 'express';
 import axios from 'axios';
 
@@ -17,7 +15,7 @@ import UnknownCommand from '../models/UnknownCommand.js';
 const router = express.Router();
 const TELEGRAM_LOGS_URI = `https://api.telegram.org/bot${process.env.TELEGRAM_LOGS_TOKEN}/sendMessage`;
 
-const mapping = {
+const classes = {
   text: TextIncome,
   contact: ContactIncome,
   start: Start,
@@ -30,34 +28,40 @@ const mapping = {
   unknown: UnknownCommand,
 };
 
-const getUpdateType = (update) => {
-  if (update.callback_query) {
-    console.log(`updateType is callback_query:  ${update.callback_query.data}\n`);
-    return update.callback_query.data;
-  }
-  if (update.message?.entities?.[0].type === 'bot_command') { // заменить на text.startWith('/') ? true : false
-    console.log(`msgType is bot_command: ${update.message.text.toLowerCase().trim()}\n`); // упало с ошибкой msgType is bot_command: вы не привязаны к сайту, нажмите /start
-    return update.message.text.toLowerCase().trim().slice(1);
-  }
-  if (update.message) {
-    const knownMsgTypes = ['text', 'contact'];
-    const incomingMsgTypes = Object.keys(update.message);
-    const msgType = knownMsgTypes.find((msgType) => incomingMsgTypes.includes(msgType));
-    const result = msgType ? msgType : 'unknown';
-    console.log(`msgType is: ${result}\n`);
-    return result;
-  }
-  if (update.my_chat_member) {
-    console.log(`\nupdateType is my_chat_member:  ${update.my_chat_member}\n`);
-    return 'welcomeBack';
-  }
-  return 'unknown';
-};
+const updateTypes = [
+  {
+    checkCondition: (update) => update.callback_query !== undefined,
+    getUpdateType: (update) => update.callback_query.data,
+  },
+  {
+    checkCondition: (update) => update.message !== undefined,
+    getUpdateType: (update) => {
+      const knownMsgTypes = ['text', 'contact'];
+      const incomingMsgTypes = Object.keys(update.message);
+      const msgType = knownMsgTypes.find((item) => incomingMsgTypes.includes(item));
+
+      const botCommand = update.message.entities?.[0].type === 'bot_command'
+        ? update.message.text.toLowerCase().trim().slice(1)
+        : undefined;
+      const knownBotCmds = ['start', 'get_tournaments', 'get_results'];
+      const isBotCmdRight = knownBotCmds.includes(botCommand);
+
+      const result = isBotCmdRight ? botCommand : msgType || 'unknown';
+      console.log(`msgType is: ${result}\n`);
+      return result;
+    },
+  },
+  {
+    checkCondition: (update) => update.my_chat_member !== undefined,
+    getUpdateType: () => 'welcomeBack',
+  },
+];
 
 const getStrategy = (update) => {
-  const updateType = getUpdateType(update);
-  const ClassName = mapping[updateType];
-  return new ClassName();
+  const { getUpdateType } = updateTypes.find(({ checkCondition }) => checkCondition(update));
+  const updateType = getUpdateType ? getUpdateType(update) : 'unknown';
+  const ClassName = classes[updateType];
+  return ClassName;
 };
 
 /* new messages listing. */
@@ -65,7 +69,7 @@ router.post('/', async (req, res) => {
   const update = req.body;
   console.log(`\nNew-message. Incoming update:\n ${JSON.stringify(update)}\n`);
   const strategy = getStrategy(update);
-  
+
   try {
     await strategy.respond(update);
     res.send('Done'); // Should it be here? If I get correct update anyway. In order to escape an attack?
@@ -73,7 +77,7 @@ router.post('/', async (req, res) => {
     console.log('\nCaught an error:');
     console.log(e);
 
-    let error ='';
+    let error = '';
     if (e.response) {
       error = `The request was made and the server responded with
       error.response.data:

@@ -1,5 +1,3 @@
-/* eslint no-console: ["error", { allow: ["warn", "error", "log"] }] */
-
 import Base from './Base.js';
 /*
 const findChatId = (obj) => {
@@ -40,7 +38,7 @@ const findChatId = (obj) => {
 };
 
 export default class UnknownCommand extends Base {
-  async respond(update) {
+  static async respond(update) {
     const resultArray = findChatId(Object.entries(update));
     const chatId = resultArray[0];
     console.log(`UnknownCommand: chatId is ${chatId}, type of chatId is ${typeof chatId}`);
@@ -52,9 +50,9 @@ export default class UnknownCommand extends Base {
         text: 'Я не знаю такой комманды',
       };
     } else {
-      throw 'Somebody sent something unknown, without chat.id';
+      throw new Error('Somebody sent something unknown, without chat.iddd');
     }
 
-    await this.sendMsgToChat(msg);
+    await Base.sendMsgToChat(msg);
   }
 }

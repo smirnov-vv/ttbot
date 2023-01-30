@@ -1,3 +1,6 @@
+install:
+	npm ci
+
 docker:
 	docker build -t vvsmirnov/tt-saratov-bot .
 	docker push vvsmirnov/tt-saratov-bot
@@ -8,3 +11,9 @@ compose:
 
 ssh:
 	ssh -t root@45.67.57.2 'cd ttbot_dev ; bash -l'
+
+lint:
+	npx eslint .
+
+climate:
+	codeclimate analyze
