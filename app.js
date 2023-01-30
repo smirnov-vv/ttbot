@@ -20,7 +20,6 @@ app.set('view engine', 'pug');
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/health-check', (req, res) => res.sendStatus(200));
 app.use('/new-message', router);
-app.use('/announcement', announcement);
 
 app.use((req, res) => {
   res.status(404).json({ message: "We couldn't find what you were looking for 😞" });
