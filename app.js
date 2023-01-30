@@ -7,7 +7,6 @@ import logger from 'morgan';
 import __dirname from './dirname.js';
 
 import router from './routes/new-message.js';
-import announcement from './routes/announcement.js';
 
 const app = express();
 
