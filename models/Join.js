@@ -39,6 +39,9 @@ export default class Join extends Base {
     );
     // console.log(`\nJoin: In the table record №${response.data} was added`);
 
+    // Clear cache on the web-site
+    await axios.get('http://tt-saratov.ru/statistics/mvc/?ctrl=Admin&act=ForceClearCache');
+
     // Show changed participants list
     await Base.getParticipants(cbMessage);
   }
