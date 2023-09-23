@@ -29,14 +29,11 @@ export default class Join extends Base {
 
     // Add application for the tour to the DB
     // const response = await axios.post(
-    await axios.post(
-      `${process.env.DB_API_URL}/x_CallForTour`,
-      {
-        cft_TourId: tourId,
-        cft_PlayerId: playerId,
-        cft_PlayerRating: 0,
-      },
-    );
+    await axios.post(`${process.env.DB_API_URL}/x_CallForTour`, {
+      cft_TourId: tourId,
+      cft_PlayerId: playerId,
+      cft_PlayerRating: 0,
+    });
     // console.log(`\nJoin: In the table record №${response.data} was added`);
 
     // Clear cache on the web-site

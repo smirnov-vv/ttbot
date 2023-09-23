@@ -31,14 +31,15 @@ export default class Base {
   }
 
   static async getApplicationId(tourId, playerId) {
-    // Getting all applications for all tournaments
-    const xCallForTour = await axios.get(`${process.env.DB_API_URL}/x_CallForTour`);
+    // Getting all applications for the tournament
+    const xCallForTour = await axios.get(`${process.env.DB_API_URL}/x_CallForTour?filter=cft_TourId,eq,${tourId}`);
     console.log('\nBase.getApplicationId: There\'re following columns in "x_CallForTour" table:');
     console.log(xCallForTour.data.x_CallForTour.columns);
     const allApps = xCallForTour.data.x_CallForTour.records;
 
     // Find application of the player for the tournament
-    const application = allApps.find((app) => (app[1] === tourId && app[3] === playerId));
+    const application = allApps.find(([, cftTourId, , cftPlayerId]) => (
+      cftTourId === tourId && cftPlayerId === playerId));
     console.log(`Base.getApplicationId: if the application is found there will be a result: ${application}`);
 
     // The application's ID in x_CallForTour table that's stored in cftID field
@@ -48,56 +49,43 @@ export default class Base {
   }
 
   static async getPlayerId(tgusername) {
-    // Getting all players from the database
-    const xPlayers = await axios.get(`${process.env.DB_API_URL}/x_Players`);
+    // Find player in the database with the tgusername
+    const xPlayers = await axios.get(`${process.env.DB_API_URL}/x_Players?filter=p_tgusername,eq,${tgusername}`);
     console.log('\nBase.getPlayerId: There\'re following columns in x_Players table:');
     console.log(xPlayers.data.x_Players.columns);
-    const allPlayers = xPlayers.data.x_Players.records;
-
-    // Find player by their phone number of telegram account
-    const result = allPlayers.find((player) => player[16] === tgusername);
-
+    const player = xPlayers.data.x_Players.records[0];
+    const [pId, pName, , , , , , , , , , , , , , , pTgusername] = player;
+    console.log(`Base.getPlayerId: found player id: ${pId}, name: ${pName}, tg username: ${pTgusername}`);
+    console.log(`Base.getPlayerId: typeof tgusername is ${typeof tgusername}, typeof pId is ${typeof pId}`);
     // Return the player ID
-    const playerId = result?.[0];
-    console.log(`Base.getPlayerId: playerId is ${playerId}`);
-    console.log(`Base.getPlayerId:  typeof playerId is ${typeof playerId}`);
-
-    return playerId;
+    return pId;
   }
 
   static async getPlayerName(tgusername) {
-    // Getting all players from the database
-    const xPlayers = await axios.get(`${process.env.DB_API_URL}/x_Players`);
+    // Find player in the database with the tgusername
+    const xPlayers = await axios.get(`${process.env.DB_API_URL}/x_Players?filter=p_tgusername,eq,${tgusername}`);
     console.log('\nBase.getPlayerName: There\'re following columns in x_Players table:');
     console.log(xPlayers.data.x_Players.columns);
-    const allPlayers = xPlayers.data.x_Players.records;
-
-    // Find player by their phone number of telegram account
-    const result = allPlayers.find((player) => player[16] === tgusername);
-    console.log(`Base.getPlayerName: tgusername is ${tgusername}`);
-    console.log(`Base.getPlayerName: typeof tgusername is ${typeof tgusername}`);
-    console.log(`Base.getPlayerName: player is ${result}`);
-
+    const player = xPlayers.data.x_Players.records[0];
+    const [pId, pName, , , , , , , , , , , , , , , pTgusername] = player;
+    console.log(`Base.getPlayerName: found player id: ${pId}, name: ${pName}, tg username: ${pTgusername}`);
+    console.log(`Base.getPlayerName: typeof tgusername is ${typeof tgusername}, typeof pName is ${typeof pName}`);
     // Return the player name
-    const playerName = result?.[1];
-    console.log(`Base.getPlayerName: playerName is ${playerName}`);
-    console.log(`Base.getPlayerName: typeof playerName is ${typeof playerName}`);
-
-    return playerName;
+    return pName || 'Не удалось найти Ваше имя в базе игроков';
   }
 
   static async getParticipants(cbMessage) {
     const tourId = Number(cbMessage.text.split('.')[0]);
 
     // Getting participants list of the tournament
-    const vCallForTour = await axios.get(`${process.env.DB_API_URL}/v_CallForTour`);
-    console.log(`\nBase: Columns in v_CallForTour:\n${vCallForTour.data.v_CallForTour.columns}`);
+    const vCallForTour = await axios.get(`${process.env.DB_API_URL}/v_CallForTour?filter=cft_TourId,eq,${tourId}`);
+    console.log(`\nBase.getParticipants: Columns in v_CallForTour:\n${vCallForTour.data.v_CallForTour.columns}\n`);
     const allParticipants = vCallForTour.data.v_CallForTour.records;
-    const filteredParticipants = allParticipants.filter(([cftTourId]) => cftTourId === tourId)
-      .map(([, , pName, , profileURLArgs], index) => (
-        `<a href="${process.env.URL}${profileURLArgs}&mobileview=true">${index + 1}. ${pName}</a>\n`));
-    const participantsList = filteredParticipants.join('');
-    console.log(`\nBase:\nTour's number is ${tourId}\nList of participants:\n${participantsList}`);
+    console.log(`Base.getParticipants: allParticipants: \n${allParticipants} isArray(allParticipants): ${Array.isArray(allParticipants)}\n`);
+    const participantsToDisplay = allParticipants.map(([, , pName, , profileURLArgs], index) => (
+      `<a href="${process.env.URL}${profileURLArgs}&mobileview=true">${index + 1}. ${pName}</a>\n`));
+    const participantsList = participantsToDisplay.join('');
+    console.log(`\nBase.getParticipants:\nTour's number is ${tourId}\nList of finished participants:\n${participantsList}`);
 
     // Choose suitable keyboard
     const playerId = await Base.getPlayerId(cbMessage.chat.username);

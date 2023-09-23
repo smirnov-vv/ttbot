@@ -13,26 +13,25 @@ export default class ContactIncome extends Base {
       return;
     }
 
-    // Get all players from the DB
-    const xPlayers = await axios.get(`${DB}/x_Players`);
+    // Find player with shared phone number
+    const xPlayers = await axios.get(`${DB}/x_Players?filter=p_Contacts,cs,${phoneNumber.slice(-10)}`);
     // console.log('\nContactIncome: There\'re following columns in x_Players table:');
     // console.log(xPlayers.data.x_Players.columns);
-    const allPlayers = xPlayers.data.x_Players.records;
+    const players = xPlayers.data.x_Players.records;
 
     // Find player who owns shared phone number
     // const player = allPlayers.find((item) => item[5]?.slice(-10) === phoneNumber.slice(-10));
-    const index = allPlayers.findIndex((item) => item[5]?.slice(-10) === phoneNumber.slice(-10));
     // console.log('\nContactIncome: Found player is');
     // console.log(player);
     // console.log('\nContactIncome: the player\'s ID in the DB is');
-    const playerRecord = index + 1;
+    const playerId = Number(players[0][0]);
     // console.log(playerRecord);
     // console.log('\nContactIncome: preparing to record username: ');
     // console.log(`tg username is ${update.message.from.username}`);
     // console.log(`type of tg username is ${typeof update.message.from.username}`);
 
     // If there's no such player then stop
-    if (index === -1) {
+    if (players.length === 0) {
       await Base.sendMsgToChat({ chat_id: chatId, text: 'Номер Вашего телефона не найден в базе сайта tt-saratov.ru, обратитесь к администрации сайта tt-saratov.ru' });
       return;
     }
@@ -40,14 +39,14 @@ export default class ContactIncome extends Base {
     // Otherwise update player's record in the DB
     // const putUsername = await axios.put(
     await axios.put(
-      `${DB}/x_Players/${playerRecord}`,
+      `${DB}/x_Players/${playerId}`,
       {
         p_tgusername: `${update.message.from.username}`,
       },
     );
 
     // const foundPlayer = await axios.get(`${DB}/x_Players/${playerRecord}`); // just to check
-    await axios.get(`${DB}/x_Players/${playerRecord}`); // just to check
+    // await axios.get(`${DB}/x_Players/${playerId}`); // just to check
     // console.log('foundPlayer directly from the DB');
     // console.log(foundPlayer.data);
     // console.log(`their typeof p_tgusername is ${typeof foundPlayer.data.p_tgusername}`);

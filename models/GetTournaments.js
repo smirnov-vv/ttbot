@@ -1,5 +1,6 @@
 import axios from 'axios';
 import Base from './Base.js';
+import getYearMonth from './helpers.js';
 
 const ENV = process.env.environment;
 const DB = process.env.DB_API_URL;
@@ -20,23 +21,40 @@ export default class GetTournaments extends Base {
     const afterDate = ENV === 'prod' ? new Date() : new Date('2016-10-18T11:24:00');
 
     // Get list of future tournaments
-    const xTours = await axios.get(`${DB}/x_Tours`);
-    console.log('\nGetTournaments: There\'re following columns in x_Tours table:');
-    console.log(xTours.data.x_Tours.columns);
+    const xTours = await axios.get(`${DB}/x_Tours?filter[]=t_DateTime,sw,${getYearMonth(afterDate)}&filter[]=t_DateTime,sw,${getYearMonth(afterDate, 1)}&satisfy=any`);
+    // console.log('\nGetTournaments: There\'re following columns in x_Tours table:');
+    // console.log(xTours.data.x_Tours.columns);
     const allTours = xTours.data.x_Tours.records;
-    const futureTours = allTours.filter((tour) => new Date(tour[3]) > afterDate)
-      .map(([tId, , , tDateTime, tSite, , tName, , , , tUrl]) => (tUrl
-        ? `<a href="${tUrl}">${tId}. ${tDateTime} - ${tSite} - ${tName}</a>`
-        // return `<a href="https://ttbot.smirnov.solutions:${PORT}/announcement?${qsOfAnnouncement}">${tId}. ${tDateTime} - ${tSite} - ${tName}</a>`;
-        : `${tId}. ${tDateTime} - ${tSite} - ${tName}`));
+    const futureTours = allTours.filter(([, , , tDateTime]) => new Date(tDateTime) > afterDate);
 
-    if (futureTours.length === 0) {
+    const toursToDisplay = await futureTours.reduce(async (memo, tour) => {
+      const results = await memo; // wait for the previous result
+      const [tId, , , tDateTime, , tCourtId, tName, , , , tUrl] = tour;
+      const xCourts = await axios.get(`${DB}/x_Courts?filter=c_Id,eq,${Number(tCourtId)}`);
+      const courtName = xCourts.data.x_Courts.records[0][1];
+      const tourView = tUrl ? `<a href="${tUrl}">${tId}. ${tDateTime} - ${courtName} - ${tName}</a>` : `${tId}. ${tDateTime} - ${courtName} - ${tName}`;
+      return [...results, tourView];
+    }, []);
+    /*
+    const maxIter = futureTours.length;
+    const toursToDisplay = [];
+    for (let i = 0; i < maxIter; i += 1) {
+      const [tId, , , tDateTime, , tCourtId, tName, , , , tUrl] = futureTours[i];
+      const xCourts = await axios.get(`${DB}/x_Courts?filter=c_Id,eq,${Number(tCourtId)}`);
+      const courtName = xCourts.data.x_Courts.records[0][1];
+      const tourView = tUrl
+        ? `<a href="${tUrl}">${tId}. ${tDateTime} - ${courtName} - ${tName}</a>`
+        : `${tId}. ${tDateTime} - ${courtName} - ${tName}`;
+      toursToDisplay.push(tourView);
+    }
+    */
+    if (toursToDisplay.length === 0) {
       const msg = { chat_id: update.message.chat.id, text: 'Объявлений о новых турнирах пока нет, попробуйте позже.' };
       await Base.sendMsgToChat(msg);
       return;
     }
 
-    await futureTours.reduce(async (memo, tour) => {
+    await toursToDisplay.reduce(async (memo, tour) => {
       await memo; // wait for the previous result
       const msg = {
         chat_id: update.message.chat.id,
